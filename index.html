@@ -178,15 +178,12 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
     <h2>Dein Schatz-Profil ist fertig!</h2>
     <p>Trag dich ein und ich zeige dir sofort dein persönliches Ergebnis – und schicke dir gelegentlich kostenlose Impulse von mir.</p>
     <div id="hs-form-container">
-      <div class="eform">
-        <input type="text" class="einput" id="inp-name" placeholder="Dein Vorname">
-        <input type="email" class="einput" id="inp-email" placeholder="Deine E-Mail-Adresse">
-        <label class="nl-opt">
-          <input type="checkbox" id="nl-check" checked="">
-          <label for="nl-check"><strong>Ja, ich möchte kostenlose Impulse von Miriam</strong> – Gedanken und Tipps rund um Schatz-Code und Business-Wachstum. Abmeldung jederzeit.</label>
-        </label>
-        <button class="btn" id="submit-btn" onclick="submitForm()" style="width:100%">✨ Mein Schatz-Profil anzeigen</button>
-        <div id="form-error" style="display:none;color:#C97B6E;font-family:Arial,sans-serif;font-size:13px;margin-top:8px;text-align:center"></div>
+      <!-- HubSpot Formular – ersetzt das frühere E-Mail-Formular -->
+      <script src="https://js-eu1.hsforms.net/forms/embed/146982321.js" defer></script>
+      <div class="hs-form-frame" data-region="eu1" data-form-id="4f041e5a-a33b-4f23-896a-a31f51aa2810" data-portal-id="146982321"></div>
+      <div id="hs-form-fallback" style="display:none;font-family:Arial,sans-serif;font-size:13px;margin-top:14px;text-align:center;color:var(--gr)">
+        Das Formular konnte nicht geladen werden – evtl. blockiert ein Browser-Add-on oder Cookie-Banner den Anbieter.<br>
+        <a href="#" id="hs-form-skip" style="color:var(--t)">Ergebnis trotzdem ansehen →</a>
       </div>
     </div>
     <p class="dschutz" style="margin-top:12px">Kein Spam. Abmeldung jederzeit möglich. Mehr auf <a href="https://mumty.de/" style="color:var(--t)">mumty.de</a></p>
@@ -377,25 +374,109 @@ function zeige(id){
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
   document.getElementById(id).classList.add('on');
   window.scrollTo(0,0);
+  if(id==='s-email') hsFormSicherstellen();
 }
 
-function submitForm(){
-  var name = document.getElementById('inp-name').value.trim();
-  var email = document.getElementById('inp-email').value.trim();
-  var errEl = document.getElementById('form-error');
-  errEl.style.display='none';
-  if(!email||!email.includes('@')){
-    errEl.textContent='Bitte gib eine gültige E-Mail-Adresse ein.';
-    errEl.style.display='block';
-    return;
-  }
-  var betreff = encodeURIComponent('Neue Anmeldung: Schatz-Finder Quiz');
-  var body = encodeURIComponent('Name: ' + (name||'–') + '\nE-Mail: ' + email + '\n\nBitte in HubSpot eintragen.');
-  window.location.href = 'mailto:miriam.stark@mumty.de?subject=' + betreff + '&body=' + body;
-  setTimeout(function(){
-    zeigeErgebnisNachHS(name||'Du', true);
-  }, 1500);
+/* ---- HubSpot Formular: Rendering + Weiterleitung zum Ergebnis ---- */
+
+var hsErledigt=false, hsVorname='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false;
+
+function hsUebernehmen(msg){
+  var w=hsWerte(msg);
+  if(!Object.keys(w).length) return;
+  hsVorname=hsVornameAus(w)||hsVorname;
+  hsNewsletter=hsNewsletterAus(w);
 }
+
+/* Der E-Mail-Screen ist beim Laden ausgeblendet (.scr{display:none}).
+   Rendert HubSpot deshalb nicht, wird das Formular beim Anzeigen neu gemountet. */
+function hsGerendert(){
+  var f=document.querySelector('#hs-form-container .hs-form-frame');
+  return !!(f && (f.children.length || f.shadowRoot));
+}
+
+function hsNeuMounten(){
+  var f=document.querySelector('#hs-form-container .hs-form-frame');
+  if(!f) return;
+  var n=document.createElement('div');
+  n.className='hs-form-frame';
+  ['data-region','data-form-id','data-portal-id'].forEach(function(a){
+    if(f.getAttribute(a)!==null) n.setAttribute(a,f.getAttribute(a));
+  });
+  f.parentNode.replaceChild(n,f);
+}
+
+function hsFormSicherstellen(){
+  if(hsGemountet) return;
+  hsGemountet=true;
+  setTimeout(function(){ if(!hsGerendert()) hsNeuMounten(); },1500);
+  setTimeout(function(){
+    if(!hsGerendert()){
+      var fb=document.getElementById('hs-form-fallback');
+      if(fb) fb.style.display='block';
+    }
+  },6000);
+}
+
+/* Feldwerte aus der HubSpot-Nachricht normalisieren (Objekt- und Array-Form) */
+function hsWerte(msg){
+  var d=msg&&msg.data, out={};
+  if(!d) return out;
+  var w=d.submissionValues||d;
+  if(Array.isArray(w)){
+    w.forEach(function(f){ if(f&&f.name) out[f.name]=f.value; });
+  }else if(typeof w==='object'){
+    Object.keys(w).forEach(function(k){ out[k]=w[k]; });
+  }
+  return out;
+}
+
+function hsVornameAus(w){
+  var keys=['firstname','first_name','vorname'];
+  for(var k=0;k<keys.length;k++){
+    if(w[keys[k]]) return String(w[keys[k]]).trim();
+  }
+  return '';
+}
+
+/* Newsletter-Banner nur zeigen wenn im Formular auch zugestimmt wurde.
+   Hat das Formular kein Consent-Feld, bleibt es beim bisherigen Verhalten (an). */
+function hsNewsletterAus(w){
+  var gefunden=false, ja=false;
+  Object.keys(w).forEach(function(k){
+    if(/legal_consent.*subscription/i.test(k)){
+      gefunden=true;
+      if(w[k]===true||w[k]==='true') ja=true;
+    }
+  });
+  return gefunden?ja:true;
+}
+
+function hsErgebnisZeigen(){
+  if(hsErledigt) return;
+  hsErledigt=true;
+  if(hsNotTimer){clearTimeout(hsNotTimer);hsNotTimer=null;}
+  zeigeErgebnisNachHS(hsVorname||'Du', hsNewsletter);
+}
+
+window.addEventListener('message', function(ev){
+  var d=ev.data;
+  if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(e){ return; } }
+  if(!d||d.type!=='hsFormCallback') return;
+  if(d.eventName==='onFormSubmit'){
+    hsUebernehmen(d);
+    /* Sicherheitsnetz falls onFormSubmitted ausbleibt (z.B. eigene Weiterleitung) */
+    hsNotTimer=setTimeout(hsErgebnisZeigen,4000);
+  }else if(d.eventName==='onFormSubmitted'){
+    hsUebernehmen(d);
+    setTimeout(hsErgebnisZeigen,600);
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function(){
+  var skip=document.getElementById('hs-form-skip');
+  if(skip) skip.addEventListener('click', function(e){ e.preventDefault(); hsErgebnisZeigen(); });
+});
 
 
 
