@@ -175,8 +175,8 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
 <div id="s-email" class="scr">
   <div class="ewrap">
     <div class="eicon">✨</div>
-    <h2>Dein Schatz-Profil ist fertig!</h2>
-    <p>Trag dich ein und ich zeige dir sofort dein persönliches Ergebnis – und schicke dir gelegentlich kostenlose Impulse von mir.</p>
+    <h2>Bevor's losgeht ✦</h2>
+    <p>Trag dich ein, dann starten wir. Am Ende bekommst du dein Ergebnis direkt hier – und zusätzlich als Mail, damit es dir nicht verloren geht.</p>
     <div id="hs-form-container">
       <!-- HubSpot Formular – ersetzt das frühere E-Mail-Formular -->
       <script src="https://js-eu1.hsforms.net/forms/embed/146982321.js" defer></script>
@@ -245,16 +245,16 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
           <div class="vorschau-frage"><div class="vf-dot"></div>Wo bist du außergewöhnlich gut – was fällt dir leicht das anderen schwer fällt?</div>
           <div class="vorschau-frage"><div class="vf-dot"></div>Deine Ressourcen-Essenz in einem Satz.</div>
         </div>
-        <p class="vorschau-more">+ 4 weitere Module inkl. Skalierungs-Exkurs und KI-Angebots-Entwicklung</p>
+        <p class="vorschau-more">+ 4 weitere Module inkl. Wachstums-Exkurs und KI-Angebots-Entwicklung</p>
       </div>
 
       <div class="kauf-box">
         <h3>Das vollständige Schatz-Code Workbook</h3>
-        <p>Fünf Module. Ein Skalierungs-Exkurs. Ein KI-Angebots-Prompt. Und am Ende ein gespiegelter Schatz-Code der sich anfühlt wie ein echtes Gespräch mit mir.</p>
+        <p>Fünf Module. Ein Wachstums-Exkurs. Ein KI-Angebots-Prompt. Und am Ende ein gespiegelter Schatz-Code der sich anfühlt wie ein echtes Gespräch mit mir.</p>
         <ul class="kauf-enthalten">
           <li>5 geführte Module mit Wissens-Impulsen</li>
           <li>Quick-Check: Wo stehst du – wo willst du hin?</li>
-          <li>Exkurs: Skalierung – drei konkrete Wege</li>
+          <li>Exkurs: Wachstum – drei konkrete Wege</li>
           <li>KI-Angebots-Prompt (personalisiert auf dich)</li>
           <li>Dein Schatz-Code – KI-gespiegelt in Miriams Sprache</li>
           <li>Dein 90-Tage-Aktionsplan zum Mitnehmen</li>
@@ -365,10 +365,15 @@ var profile={
 };
 
 var aktuelle=0;
-var antworten=new Array(8).fill(null);
-var gewaehlte=null;
+var antworten=new Array(8).fill(null).map(function(){return [];});
 
-function startQuiz(){zeige("s-quiz");zeigeFrage(0);}
+/* HubSpot-Formular / Property-Name für das versteckte Ergebnis-Feld.
+   HS_ERGEBNIS_FELD muss exakt dem internen Namen der HubSpot-Kontakteigenschaft entsprechen. */
+var HS_PORTAL_ID='146982321';
+var HS_FORM_GUID='4f041e5a-a33b-4f23-896a-a31f51aa2810';
+var HS_ERGEBNIS_FELD='schatz_ergebnis';
+
+function startQuiz(){zeige("s-email");}
 
 function zeige(id){
   document.querySelectorAll('.scr').forEach(function(s){s.classList.remove('on');});
@@ -379,13 +384,22 @@ function zeige(id){
 
 /* ---- HubSpot Formular: Rendering + Weiterleitung zum Ergebnis ---- */
 
-var hsErledigt=false, hsVorname='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false;
+var hsErledigt=false, hsVorname='', hsEmail='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false;
 
 function hsUebernehmen(msg){
   var w=hsWerte(msg);
   if(!Object.keys(w).length) return;
   hsVorname=hsVornameAus(w)||hsVorname;
+  hsEmail=hsEmailAus(w)||hsEmail;
   hsNewsletter=hsNewsletterAus(w);
+}
+
+function hsEmailAus(w){
+  var keys=['email','Email','E-Mail','e_mail'];
+  for(var k=0;k<keys.length;k++){
+    if(w[keys[k]]) return String(w[keys[k]]).trim();
+  }
+  return '';
 }
 
 /* Der E-Mail-Screen ist beim Laden ausgeblendet (.scr{display:none}).
@@ -452,11 +466,14 @@ function hsNewsletterAus(w){
   return gefunden?ja:true;
 }
 
+/* Läuft, sobald das E-Mail-Formular abgeschickt ist (oder der Skip-Link genutzt wurde).
+   Startet jetzt das Quiz, da die Mail-Adresse ganz am Anfang erfasst wird. */
 function hsErgebnisZeigen(){
   if(hsErledigt) return;
   hsErledigt=true;
   if(hsNotTimer){clearTimeout(hsNotTimer);hsNotTimer=null;}
-  zeigeErgebnisNachHS(hsVorname||'Du', hsNewsletter);
+  zeige("s-quiz");
+  zeigeFrage(0);
 }
 
 window.addEventListener('message', function(ev){
@@ -494,39 +511,44 @@ function zeigeFrage(idx){
   cont.innerHTML='';
   f.antworten.forEach(function(a,i){
     var btn=document.createElement('button');
-    btn.className='abtn'+(antworten[idx]===a.wert?' sel':'');
+    var istGewaehlt=antworten[idx].indexOf(a.wert)!==-1;
+    btn.className='abtn'+(istGewaehlt?' sel':'');
     btn.innerHTML='<span class="abuch">'+String.fromCharCode(65+i)+'</span>'+a.text;
     btn.onclick=function(){waehle(a.wert,btn);};
     cont.appendChild(btn);
   });
-  gewaehlte=antworten[idx];
-  document.getElementById('bw').disabled=!gewaehlte;
+  document.getElementById('bw').disabled=antworten[idx].length===0;
   document.getElementById('bz').style.visibility=idx===0?'hidden':'visible';
   document.getElementById('bw').textContent=idx===total-1?'Zum Ergebnis ✦':'Weiter →';
 }
 
+/* Mehrfachauswahl: Klick schaltet die eigene Antwort an/aus, andere bleiben bestehen. */
 function waehle(wert,btn){
-  antworten[aktuelle]=wert;
-  gewaehlte=wert;
-  document.querySelectorAll('.abtn').forEach(function(b){b.classList.remove('sel');});
-  btn.classList.add('sel');
-  document.getElementById('bw').disabled=false;
+  var arr=antworten[aktuelle];
+  var pos=arr.indexOf(wert);
+  if(pos===-1){arr.push(wert);btn.classList.add('sel');}
+  else{arr.splice(pos,1);btn.classList.remove('sel');}
+  document.getElementById('bw').disabled=arr.length===0;
 }
 
 function weiter(){
-  antworten[aktuelle]=gewaehlte;
   if(aktuelle<fragen.length-1){zeigeFrage(aktuelle+1);}
-  else{zeige("s-email");}
+  else{berechneUndZeigeErgebnis();}
 }
 
 function zurueck(){if(aktuelle>0)zeigeFrage(aktuelle-1);}
 
 
 
-function zeigeErgebnisNachHS(name, nl){
-  if(!name) name = 'Du';
+/* Zählt alle ausgewählten Antworten über alle Fragen (auch Mehrfachauswahl je Frage),
+   ermittelt das häufigste Profil und zeigt das Ergebnis direkt an. Schickt danach
+   still im Hintergrund das Ergebnis an HubSpot, sofern eine Mail-Adresse bekannt ist. */
+function berechneUndZeigeErgebnis(){
+  var name=hsVorname||'Du';
   var z={A:0,B:0,C:0,D:0};
-  antworten.forEach(function(a){if(a)z[a]++;});
+  antworten.forEach(function(arr){
+    (arr||[]).forEach(function(a){ if(a) z[a]++; });
+  });
   var g='A',max=0;
   ['A','B','C','D'].forEach(function(k){if(z[k]>max){max=z[k];g=k;}});
   var p=profile[g];
@@ -537,13 +559,39 @@ function zeigeErgebnisNachHS(name, nl){
     return '<div class="schatz-item"><div class="snum">'+(i+1)+'</div><span>'+s+'</span></div>';
   }).join('');
   document.getElementById('rg-pos').innerHTML=p.pos;
-  if(nl)document.getElementById('nl-bestaetigung').style.display='flex';
+  if(hsNewsletter)document.getElementById('nl-bestaetigung').style.display='flex';
   zeige("s-ergebnis");
+  sendeErgebnisAnHubspot(p);
 }
 
-function zeigeErgebnis(){
-  // Fallback falls direkt aufgerufen
-  zeigeErgebnisNachHS('Du', true);
+/* Textfassung des Ergebnisses für die Kontakt-Eigenschaft in HubSpot,
+   damit sie in der Mail per Platzhalter eingesetzt werden kann. */
+function ergebnisAlsText(p){
+  var strip=function(s){ return s.replace(/<[^>]*>/g,''); };
+  var teile=[strip(p.titel), strip(p.intro)];
+  p.schaetze.forEach(function(s){ teile.push('• '+strip(s)); });
+  teile.push(strip(p.pos));
+  return teile.join('\n\n');
+}
+
+/* Stille zweite Übermittlung an dasselbe HubSpot-Formular: aktualisiert denselben
+   Kontakt (per Mail-Adresse erkannt) um das versteckte Ergebnis-Feld. Für die
+   Besucherin unsichtbar, kein zweites Formular, kein Klick. */
+function sendeErgebnisAnHubspot(p){
+  if(!hsEmail) return;
+  var url='https://api.hsforms.com/submissions/v3/integration/submit/'+HS_PORTAL_ID+'/'+HS_FORM_GUID;
+  var body={
+    fields:[
+      {name:'email', value:hsEmail},
+      {name:HS_ERGEBNIS_FELD, value:ergebnisAlsText(p)}
+    ],
+    context:{pageUri:window.location.href, pageName:document.title}
+  };
+  fetch(url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  }).catch(function(){ /* stiller Fehlschlag - Besucherin sieht ihr Ergebnis trotzdem */ });
 }
 </script>
 
