@@ -182,8 +182,8 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
       <script src="https://js-eu1.hsforms.net/forms/embed/146982321.js" defer></script>
       <div class="hs-form-frame" data-region="eu1" data-form-id="4f041e5a-a33b-4f23-896a-a31f51aa2810" data-portal-id="146982321"></div>
       <div id="hs-form-fallback" style="display:none;font-family:Arial,sans-serif;font-size:13px;margin-top:14px;text-align:center;color:var(--gr)">
-        Das Formular konnte nicht geladen werden – evtl. blockiert ein Browser-Add-on oder Cookie-Banner den Anbieter.<br>
-        <a href="#" id="hs-form-skip" style="color:var(--t)">Ergebnis trotzdem ansehen →</a>
+        Geht's nicht weiter? Manchmal blockiert ein Browser-Add-on oder Cookie-Banner den Anbieter, oder dein Browser erinnert sich noch an einen früheren Besuch.<br>
+        <a href="#" id="hs-form-skip" style="color:var(--t)">Weiter zum Quiz →</a>
       </div>
     </div>
     <p class="dschutz" style="margin-top:12px">Kein Spam. Abmeldung jederzeit möglich. Mehr auf <a href="https://mumty.de/" style="color:var(--t)">mumty.de</a></p>
@@ -424,12 +424,16 @@ function hsFormSicherstellen(){
   if(hsGemountet) return;
   hsGemountet=true;
   setTimeout(function(){ if(!hsGerendert()) hsNeuMounten(); },1500);
+  /* Sicherheitsnetz: egal ob das Formular geladen hat oder nicht - wenn nach
+     8 Sekunden noch kein Absende-Signal kam, bekommt die Besucherin einen
+     Weiter-Link, damit sie nie hängen bleibt (z.B. bei einer vom Browser
+     gemerkten früheren Übermittlung, die kein neues Signal auslöst). */
   setTimeout(function(){
-    if(!hsGerendert()){
+    if(!hsErledigt){
       var fb=document.getElementById('hs-form-fallback');
       if(fb) fb.style.display='block';
     }
-  },6000);
+  },8000);
 }
 
 /* Feldwerte aus der HubSpot-Nachricht normalisieren (Objekt- und Array-Form) */
