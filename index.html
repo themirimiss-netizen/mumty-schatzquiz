@@ -643,7 +643,7 @@ function hsErgebnisInUrlSetzen(text){
   try{
     var url=new URL(window.location.href);
     url.searchParams.set(HS_ERGEBNIS_FELD, text.slice(0,3000));
-    ['schatz_titel','schatz_intro','schatz_starke_1','schatz_starke_2','schatz_starke_3'].forEach(function(k){ if(letztesFelder && letztesFelder[k]) url.searchParams.set(k, String(letztesFelder[k]).slice(0,1000)); });
+    ['schatz_titel','schatz_intro','schatz_starke_1','schatz_starke_2','schatz_starke_3','schatz_business','schatz_blindfleck','schatz_positionierung','schatz_abschluss'].forEach(function(k){ if(letztesFelder && letztesFelder[k]) url.searchParams.set(k, String(letztesFelder[k]).slice(0,1500)); });
     window.history.replaceState({}, '', url.toString());
   }catch(e){ /* falls nicht unterstützt: Formular funktioniert trotzdem, nur ohne Ergebnis im Feld */ }
 }
