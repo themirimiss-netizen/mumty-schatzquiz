@@ -469,6 +469,15 @@ function hsFormErstellen(){
     versuche++;
     if(hsErgebnisFeldSetzen()||versuche>24) clearInterval(t);
   },500);
+  /* Zusatz-Sicherung: erscheint die Danke-Nachricht im Formular,
+     wird automatisch zum Ergebnis weitergeleitet - auch wenn das
+     Absende-Signal mal ausbleibt. */
+  var w=0;
+  var tw=setInterval(function(){
+    w++;
+    if(document.querySelector('#hs-form-ziel .submitted-message')){clearInterval(tw);hsErgebnisZeigen();}
+    else if(w>360){clearInterval(tw);}
+  },500);
 }
 
 function hsFormSicherstellen(){
@@ -657,7 +666,13 @@ function zeigeErgebnisAnzeige(p, name, nl){
 /* Textfassung des Ergebnisses, die als URL-Parameter mitgeschickt wird und so
    automatisch beim Kontakt in HubSpot landet (für den Platzhalter in der Mail). */
 function ergebnisAlsText(p, mixP){
-  var strip=function(s){ return s.replace(/<br\s*\/?>/gi,' ').replace(/<[^>]*>/g,''); };
+  /* Entfernt HTML-Tags UND wandelt HTML-Codes (&uuml; usw.) in echte Umlaute um,
+     damit der Text in HubSpot und in E-Mails sauber lesbar ist. */
+  var strip=function(s){
+    var d=document.createElement('div');
+    d.innerHTML=String(s).replace(/<br\s*\/?>/gi,' ');
+    return (d.textContent||d.innerText||'').replace(/\s+/g,' ').trim();
+  };
   var teile=[strip(p.titel), strip(p.intro)];
   p.schaetze.forEach(function(s){ teile.push('• '+strip(s)); });
   teile.push('So könnte dein Business aussehen: '+strip(p.business));
