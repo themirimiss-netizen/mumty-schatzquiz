@@ -491,22 +491,28 @@ function hsFormErstellen(){
     region:'eu1',
     portalId:HS_PORTAL_ID,
     formId:HS_FORM_GUID,
-    target:'#hs-form-ziel'
+    target:'#hs-form-ziel',
+    /* HubSpots eigene Rueckmeldungen - sie funktionieren auch, wenn das
+       Formular in einem eigenen Rahmen (iframe) steckt. */
+    onFormSubmit: function($form){
+      try{
+        var lies=function(n){
+          var e=$form && $form.find ? $form.find('input[name="'+n+'"]') : null;
+          return (e && e.length) ? String(e.val()||'').trim() : '';
+        };
+        hsVorname=lies('firstname')||hsVorname;
+        hsEmail=lies('email')||hsEmail;
+      }catch(e){}
+    },
+    onFormSubmitted: function(){
+      setTimeout(hsErgebnisZeigen,600);
+    }
   });
   /* Ergebnis-Feld befuellen, sobald das Formular im DOM ist (bis zu 12s versuchen) */
   var versuche=0;
   var t=setInterval(function(){
     versuche++;
     if(hsErgebnisFeldSetzen()||versuche>24) clearInterval(t);
-  },500);
-  /* Zusatz-Sicherung: erscheint die Danke-Nachricht im Formular,
-     wird automatisch zum Ergebnis weitergeleitet - auch wenn das
-     Absende-Signal mal ausbleibt. */
-  var w=0;
-  var tw=setInterval(function(){
-    w++;
-    if(document.querySelector('#hs-form-ziel .submitted-message')){clearInterval(tw);hsErgebnisZeigen();}
-    else if(w>360){clearInterval(tw);}
   },500);
 }
 
