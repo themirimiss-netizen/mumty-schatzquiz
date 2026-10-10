@@ -117,6 +117,19 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
 .nl-banner-title{font-size:16px;color:var(--kd);margin-bottom:5px}
 .nl-banner-sub{font-family:Arial,sans-serif;font-size:13px;color:var(--gr);line-height:1.5}
 .nl-banner-badge{background:var(--k);color:#fff;font-family:Arial,sans-serif;font-size:11px;padding:4px 12px;border-radius:20px;white-space:nowrap}
+/* Klassisches HubSpot-Formular (v2) an das Seiten-Design angepasst */
+#hs-form-ziel{text-align:left;max-width:420px;margin:0 auto}
+#hs-form-ziel ul{list-style:none;padding:0;margin:0}
+#hs-form-ziel .hs-form-field>label{font-family:Arial,sans-serif;font-size:13px;color:var(--dk);font-weight:600;display:block;margin-bottom:3px}
+#hs-form-ziel input[type=text],#hs-form-ziel input[type=email],#hs-form-ziel textarea:not([type=hidden]){width:100%;padding:12px 14px;border:1.5px solid var(--r);border-radius:11px;font-family:Arial,sans-serif;font-size:14px;background:var(--w);color:var(--dk);box-sizing:border-box;margin:2px 0 12px;outline:none}
+#hs-form-ziel input:focus{border-color:var(--k)}
+#hs-form-ziel input[type=submit]{background:linear-gradient(135deg,var(--k),var(--kd));color:#fff;border:none;padding:14px 30px;font-size:15px;font-family:Georgia,serif;border-radius:50px;cursor:pointer;width:100%;margin-top:10px;box-shadow:0 4px 18px rgba(139,94,60,.3)}
+#hs-form-ziel input[type=submit]:hover{opacity:.92}
+#hs-form-ziel .hs-error-msgs,#hs-form-ziel .hs-error-msg{color:var(--rd);font-family:Arial,sans-serif;font-size:12px;list-style:none;padding:0;margin:0 0 8px}
+#hs-form-ziel .legal-consent-container,#hs-form-ziel .hs-richtext{font-family:Arial,sans-serif;font-size:11.5px;color:var(--gr);line-height:1.6}
+#hs-form-ziel .legal-consent-container label{display:flex;gap:8px;align-items:flex-start;font-weight:400;font-family:Arial,sans-serif;font-size:12px;color:var(--gr);line-height:1.55;margin:6px 0}
+#hs-form-ziel .legal-consent-container input[type=checkbox]{margin-top:3px;flex-shrink:0}
+#hs-form-ziel .hs_schatz_ergebnis{display:none}
 </style>
 
 <style>
@@ -178,9 +191,9 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
     <h2>Dein Schatz ist bereit ✦</h2>
     <p>Du bist durch – und dein persönliches Schatz-Profil wartet auf dich. Du siehst es gleich hier auf der Seite, und ich schick's dir zusätzlich per Mail, damit du es dir speichern und jederzeit wieder ansehen kannst. Wohin darf ich's schicken?</p>
     <div id="hs-form-container">
-      <!-- HubSpot Formular – ersetzt das frühere E-Mail-Formular -->
-      <script src="https://js-eu1.hsforms.net/forms/embed/146982321.js" defer></script>
-      <div class="hs-form-frame" data-region="eu1" data-form-id="4f041e5a-a33b-4f23-896a-a31f51aa2810" data-portal-id="146982321"></div>
+      <!-- HubSpot Formular: klassische Einbettung (v2), damit das Quiz das versteckte Ergebnis-Feld direkt befuellen kann -->
+      <script charset="utf-8" src="https://js-eu1.hsforms.net/forms/embed/v2.js"></script>
+      <div id="hs-form-ziel"></div>
       <div id="hs-form-fallback" style="display:none;font-family:Arial,sans-serif;font-size:13px;margin-top:14px;text-align:center;color:var(--gr)">
         Geht's nicht weiter? Manchmal blockiert ein Browser-Add-on oder Cookie-Banner den Anbieter, oder dein Browser erinnert sich noch an einen früheren Besuch.<br>
         <a href="#" id="hs-form-skip" style="color:var(--t)">Weiter zu meinem Ergebnis →</a>
@@ -410,7 +423,7 @@ function zeige(id){
 
 /* ---- HubSpot Formular: Rendering + Weiterleitung zum Ergebnis ---- */
 
-var hsErledigt=false, hsVorname='', hsEmail='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false;
+var hsErledigt=false, hsVorname='', hsEmail='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false, letztesErgebnisText='';
 
 function hsUebernehmen(msg){
   var w=hsWerte(msg);
@@ -428,28 +441,40 @@ function hsEmailAus(w){
   return '';
 }
 
-/* Der E-Mail-Screen ist beim Laden ausgeblendet (.scr{display:none}).
-   Rendert HubSpot deshalb nicht, wird das Formular beim Anzeigen neu gemountet. */
-function hsGerendert(){
-  var f=document.querySelector('#hs-form-container .hs-form-frame');
-  return !!(f && (f.children.length || f.shadowRoot));
+/* Das Formular wird klassisch (v2) direkt in die Seite gerendert.
+   So kann das Quiz das versteckte Ergebnis-Feld selbst befuellen -
+   zuverlaessig, ohne den frueheren URL-Parameter-Umweg. */
+function hsErgebnisFeldSetzen(){
+  try{
+    var feld=document.querySelector('#hs-form-ziel input[name="'+HS_ERGEBNIS_FELD+'"], #hs-form-ziel textarea[name="'+HS_ERGEBNIS_FELD+'"]');
+    if(!feld||!letztesErgebnisText) return false;
+    feld.value=letztesErgebnisText.slice(0,3000);
+    feld.dispatchEvent(new Event('input',{bubbles:true}));
+    feld.dispatchEvent(new Event('change',{bubbles:true}));
+    return true;
+  }catch(e){ return false; }
 }
 
-function hsNeuMounten(){
-  var f=document.querySelector('#hs-form-container .hs-form-frame');
-  if(!f) return;
-  var n=document.createElement('div');
-  n.className='hs-form-frame';
-  ['data-region','data-form-id','data-portal-id'].forEach(function(a){
-    if(f.getAttribute(a)!==null) n.setAttribute(a,f.getAttribute(a));
+function hsFormErstellen(){
+  if(!(window.hbspt&&window.hbspt.forms)){ setTimeout(hsFormErstellen,300); return; }
+  window.hbspt.forms.create({
+    region:'eu1',
+    portalId:HS_PORTAL_ID,
+    formId:HS_FORM_GUID,
+    target:'#hs-form-ziel'
   });
-  f.parentNode.replaceChild(n,f);
+  /* Ergebnis-Feld befuellen, sobald das Formular im DOM ist (bis zu 12s versuchen) */
+  var versuche=0;
+  var t=setInterval(function(){
+    versuche++;
+    if(hsErgebnisFeldSetzen()||versuche>24) clearInterval(t);
+  },500);
 }
 
 function hsFormSicherstellen(){
   if(hsGemountet) return;
   hsGemountet=true;
-  setTimeout(function(){ if(!hsGerendert()) hsNeuMounten(); },1500);
+  hsFormErstellen();
   /* Sicherheitsnetz: egal ob das Formular geladen hat oder nicht - wenn nach
      8 Sekunden noch kein Absende-Signal kam, bekommt die Besucherin einen
      Weiter-Link, damit sie nie hängen bleibt (z.B. bei einer vom Browser
@@ -511,6 +536,7 @@ window.addEventListener('message', function(ev){
   if(typeof d==='string'){ try{ d=JSON.parse(d); }catch(e){ return; } }
   if(!d||d.type!=='hsFormCallback') return;
   if(d.eventName==='onFormSubmit'){
+    hsErgebnisFeldSetzen(); /* Sicherheitsnetz: Ergebnis unmittelbar vor dem Absenden nochmals setzen */
     hsUebernehmen(d);
     /* Sicherheitsnetz falls onFormSubmitted ausbleibt (z.B. eigene Weiterleitung) */
     hsNotTimer=setTimeout(hsErgebnisZeigen,4000);
@@ -586,7 +612,8 @@ function ergebnisBerechnenUndFormularZeigen(){
   var g=sortiert[0], zweiter=sortiert[1];
   letztesProfil=profile[g];
   letztesMixProfil=(z[g]-z[zweiter]<=1 && z[zweiter]>0)?profile[zweiter]:null;
-  hsErgebnisInUrlSetzen(ergebnisAlsText(letztesProfil, letztesMixProfil));
+  letztesErgebnisText=ergebnisAlsText(letztesProfil, letztesMixProfil);
+  hsErgebnisInUrlSetzen(letztesErgebnisText);
   zeige("s-email");
 }
 
