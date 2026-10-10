@@ -129,7 +129,7 @@ body{font-family:Georgia,serif;background:var(--cr);color:var(--dk);min-height:1
 #hs-form-ziel .legal-consent-container,#hs-form-ziel .hs-richtext{font-family:Arial,sans-serif;font-size:11.5px;color:var(--gr);line-height:1.6}
 #hs-form-ziel .legal-consent-container label{display:flex;gap:8px;align-items:flex-start;font-weight:400;font-family:Arial,sans-serif;font-size:12px;color:var(--gr);line-height:1.55;margin:6px 0}
 #hs-form-ziel .legal-consent-container input[type=checkbox]{margin-top:3px;flex-shrink:0}
-#hs-form-ziel .hs_schatz_ergebnis{display:none}
+#hs-form-ziel .hs_schatz_ergebnis,#hs-form-ziel .hs_schatz_titel,#hs-form-ziel .hs_schatz_intro,#hs-form-ziel .hs_schatz_starke_1,#hs-form-ziel .hs_schatz_starke_2,#hs-form-ziel .hs_schatz_starke_3,#hs-form-ziel .hs_schatz_business,#hs-form-ziel .hs_schatz_blindfleck,#hs-form-ziel .hs_schatz_positionierung,#hs-form-ziel .hs_schatz_abschluss{display:none}
 </style>
 
 <style>
@@ -423,7 +423,7 @@ function zeige(id){
 
 /* ---- HubSpot Formular: Rendering + Weiterleitung zum Ergebnis ---- */
 
-var hsErledigt=false, hsVorname='', hsEmail='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false, letztesErgebnisText='';
+var hsErledigt=false, hsVorname='', hsEmail='', hsNewsletter=true, hsNotTimer=null, hsGemountet=false, letztesErgebnisText='', letztesFelder={};
 
 function hsUebernehmen(msg){
   var w=hsWerte(msg);
@@ -444,14 +444,21 @@ function hsEmailAus(w){
 /* Das Formular wird klassisch (v2) direkt in die Seite gerendert.
    So kann das Quiz das versteckte Ergebnis-Feld selbst befuellen -
    zuverlaessig, ohne den frueheren URL-Parameter-Umweg. */
+function hsFeldWertSetzen(name, wert){
+  var feld=document.querySelector('#hs-form-ziel input[name="'+name+'"], #hs-form-ziel textarea[name="'+name+'"]');
+  if(!feld) return false;
+  feld.value=String(wert).slice(0,3000);
+  feld.dispatchEvent(new Event('input',{bubbles:true}));
+  feld.dispatchEvent(new Event('change',{bubbles:true}));
+  return true;
+}
+
 function hsErgebnisFeldSetzen(){
   try{
-    var feld=document.querySelector('#hs-form-ziel input[name="'+HS_ERGEBNIS_FELD+'"], #hs-form-ziel textarea[name="'+HS_ERGEBNIS_FELD+'"]');
-    if(!feld||!letztesErgebnisText) return false;
-    feld.value=letztesErgebnisText.slice(0,3000);
-    feld.dispatchEvent(new Event('input',{bubbles:true}));
-    feld.dispatchEvent(new Event('change',{bubbles:true}));
-    return true;
+    if(!letztesErgebnisText) return false;
+    var ok=hsFeldWertSetzen(HS_ERGEBNIS_FELD, letztesErgebnisText);
+    Object.keys(letztesFelder).forEach(function(k){ hsFeldWertSetzen(k, letztesFelder[k]); });
+    return ok;
   }catch(e){ return false; }
 }
 
@@ -622,6 +629,7 @@ function ergebnisBerechnenUndFormularZeigen(){
   letztesProfil=profile[g];
   letztesMixProfil=(z[g]-z[zweiter]<=1 && z[zweiter]>0)?profile[zweiter]:null;
   letztesErgebnisText=ergebnisAlsText(letztesProfil, letztesMixProfil);
+  letztesFelder=ergebnisAlsFelder(letztesProfil, letztesMixProfil);
   hsErgebnisInUrlSetzen(letztesErgebnisText);
   zeige("s-email");
 }
@@ -665,14 +673,35 @@ function zeigeErgebnisAnzeige(p, name, nl){
 
 /* Textfassung des Ergebnisses, die als URL-Parameter mitgeschickt wird und so
    automatisch beim Kontakt in HubSpot landet (für den Platzhalter in der Mail). */
-function ergebnisAlsText(p, mixP){
-  /* Entfernt HTML-Tags UND wandelt HTML-Codes (&uuml; usw.) in echte Umlaute um,
-     damit der Text in HubSpot und in E-Mails sauber lesbar ist. */
-  var strip=function(s){
-    var d=document.createElement('div');
-    d.innerHTML=String(s).replace(/<br\s*\/?>/gi,' ');
-    return (d.textContent||d.innerText||'').replace(/\s+/g,' ').trim();
+/* Entfernt HTML-Tags UND wandelt HTML-Codes (&uuml; usw.) in echte Umlaute um,
+   damit der Text in HubSpot und in E-Mails sauber lesbar ist. */
+function textAusHtml(s){
+  var d=document.createElement('div');
+  d.innerHTML=String(s).replace(/<br\s*\/?>/gi,' ');
+  return (d.textContent||d.innerText||'').replace(/\s+/g,' ').trim();
+}
+
+/* Zerlegt das Ergebnis in einzelne Bausteine fuer die huebsch formatierte E-Mail.
+   Jeder Baustein landet in einer eigenen HubSpot-Eigenschaft - gesetzt wird nur,
+   was als verstecktes Feld im Formular existiert. */
+function ergebnisAlsFelder(p, mixP){
+  if(!p) return {};
+  var abschluss=(mixP?('Und ein bisschen '+mixP.kurz+' steckt auch in dir – das macht dich vielseitig. '):'')+textAusHtml(p.schluss);
+  return {
+    schatz_titel: textAusHtml(p.titel),
+    schatz_intro: textAusHtml(p.intro),
+    schatz_starke_1: textAusHtml(p.schaetze[0]||''),
+    schatz_starke_2: textAusHtml(p.schaetze[1]||''),
+    schatz_starke_3: textAusHtml(p.schaetze[2]||''),
+    schatz_business: textAusHtml(p.business),
+    schatz_blindfleck: textAusHtml(p.blindfleck),
+    schatz_positionierung: textAusHtml(p.pos),
+    schatz_abschluss: abschluss
   };
+}
+
+function ergebnisAlsText(p, mixP){
+  var strip=textAusHtml;
   var teile=[strip(p.titel), strip(p.intro)];
   p.schaetze.forEach(function(s){ teile.push('• '+strip(s)); });
   teile.push('So könnte dein Business aussehen: '+strip(p.business));
