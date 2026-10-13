@@ -514,6 +514,33 @@ function hsFormErstellen(){
     versuche++;
     if(hsErgebnisFeldSetzen()||versuche>24) clearInterval(t);
   },500);
+  hsAbsendenBeobachten();
+}
+
+/* Das Quiz erkennt selbst, wann abgeschickt wurde - ganz ohne Signal von
+   HubSpot. Nach dem Absenden ersetzt HubSpot das lange Formular durch die
+   kurze Dankeschoen-Nachricht. Der Rahmen schrumpft dadurch deutlich
+   (gemessen: rund 774px -> rund 260px). Genau das wird hier beobachtet. */
+function hsAbsendenBeobachten(){
+  var maxH=0, treffer=0;
+  var iv=setInterval(function(){
+    if(hsErledigt){ clearInterval(iv); return; }
+    var f=document.querySelector('#hs-form-ziel iframe');
+    if(!f) return;
+    var h=f.offsetHeight;
+    if(h>maxH) maxH=h;
+    /* nur werten wenn vorher wirklich ein volles Formular da war */
+    if(maxH>420 && h>40 && h<maxH*0.6){
+      treffer++;
+      if(treffer>=2){
+        clearInterval(iv);
+        /* kurz warten, damit die Dankeschoen-Nachricht noch gelesen wird */
+        setTimeout(hsErgebnisZeigen,2200);
+      }
+    }else{
+      treffer=0;
+    }
+  },400);
 }
 
 function hsFormSicherstellen(){
@@ -529,7 +556,7 @@ function hsFormSicherstellen(){
       var fb=document.getElementById('hs-form-fallback');
       if(fb) fb.style.display='block';
     }
-  },8000);
+  },40000);
 }
 
 /* Feldwerte aus der HubSpot-Nachricht normalisieren (Objekt- und Array-Form) */
